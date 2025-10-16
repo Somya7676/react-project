@@ -1,20 +1,19 @@
-// src/pages/Details.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Beams from "../components/beams.jsx";
 import StarBorder from "../components/starBorder.jsx";
 import ShinyText from "../components/shinyText.jsx";
 import UserLogo from "../assets/userLogo.png";
-
 import { removeAuth } from "../AuthRoutes/auth";
 import "./details.css";
 
 export default function Details() {
-  const { id } = useParams();          // player ID from URL
+  const { id } = useParams(); // username
   const navigate = useNavigate();
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [processing, setProcessing] = useState(false); // 🔹 for Ban/Unban button loading
 
   useEffect(() => {
     fetchPlayer();
@@ -23,10 +22,15 @@ export default function Details() {
   async function fetchPlayer() {
     setLoading(true);
     try {
-      const res = await fetch(`http://65.0.20.31:3000/users/details/${id}`);
+      const res = await fetch("https://api.pulkitworks.info/users/details/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: id }),
+      });
+
       const data = await res.json();
 
-      if (data && data.user) {
+      if (data && data.success && data.user) {
         setPlayer(data.user);
       } else {
         setMessage("⚠️ Player not found");
@@ -48,9 +52,60 @@ export default function Details() {
     navigate("/", { replace: true });
   }
 
+  // 🔹 Function to Ban the player
+  async function handleBan() {
+    if (!player?.username) return;
+    setProcessing(true);
+    try {
+      const res = await fetch("https://api.pulkitworks.info/users/ban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: player.username }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ ${player.username} has been banned.`);
+        navigate("/home");
+      } else {
+        alert(`⚠️ Failed to ban: ${data.message}`);
+      }
+    } catch (err) {
+      console.error("Ban Error:", err);
+      alert("❌ Error banning player.");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  // 🔹 Function to Unban the player
+  async function handleUnban() {
+    if (!player?.username) return;
+    setProcessing(true);
+    try {
+      const res = await fetch("https://api.pulkitworks.info/users/unban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: player.username }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ ${player.username} has been unbanned.`);
+        navigate("/home");
+      } else {
+        alert(`⚠️ Failed to unban: ${data.message}`);
+      }
+    } catch (err) {
+      console.error("Unban Error:", err);
+      alert("❌ Error unbanning player.");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   return (
     <div className="details-root">
-      {/* Background */}
       <div className="details-background">
         <Beams
           beamWidth={2}
@@ -80,36 +135,12 @@ export default function Details() {
                 />
               </div>
               <div className="player-card-right">
-                <ShinyText
-                  text={`Player Name: ${player.playername}`}
-                  speed={3}
-                  className="shiny-line"
-                />
-                <ShinyText
-                  text={`Username: ${player.username}`}
-                  speed={3}
-                  className="shiny-line"
-                />
-                <ShinyText
-                  text={`Level: ${player.level}`}
-                  speed={3}
-                  className="shiny-line"
-                />
-                <ShinyText
-                  text={`Coins: ${player.coins}`}
-                  speed={3}
-                  className="shiny-line"
-                />
-                <ShinyText
-                  text={`Enemies Defeated: ${player.EnemiesDefeated}`}
-                  speed={3}
-                  className="shiny-line"
-                />
-                <ShinyText
-                  text={`Account Status: ${player.accountStatus}`}
-                  speed={3}
-                  className="shiny-line"
-                />
+                <ShinyText text={`Player Name: ${player.playername}`} speed={3} className="shiny-line" />
+                <ShinyText text={`Username: ${player.username}`} speed={3} className="shiny-line" />
+                <ShinyText text={`Level: ${player.level}`} speed={3} className="shiny-line" />
+                <ShinyText text={`Coins: ${player.coins}`} speed={3} className="shiny-line" />
+                <ShinyText text={`Enemies Defeated: ${player.EnemiesDefeated}`} speed={3} className="shiny-line" />
+                <ShinyText text={`Account Status: ${player.accountStatus}`} speed={3} className="shiny-line" />
               </div>
             </div>
           </StarBorder>
@@ -122,6 +153,31 @@ export default function Details() {
           <button className="btn" onClick={handleLogout}>
             Logout
           </button>
+
+          {/* 🔹 Ban / Unban Button */}
+          {!loading && player && (
+            <>
+              {player.accountStatus === "banned" ? (
+                <button
+                  className="btn"
+                  style={{ backgroundColor: "green" }}
+                  onClick={handleUnban}
+                  disabled={processing}
+                >
+                  {processing ? "Processing..." : "Unban Player"}
+                </button>
+              ) : (
+                <button
+                  className="btn"
+                  style={{ backgroundColor: "red" }}
+                  onClick={handleBan}
+                  disabled={processing}
+                >
+                  {processing ? "Processing..." : "Ban Player"}
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
